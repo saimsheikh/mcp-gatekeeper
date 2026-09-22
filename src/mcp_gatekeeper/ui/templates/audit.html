@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block page_title %}Audit log &middot; {{ title }}{% endblock %}
+{% block content %}
+<h1>Audit log</h1>
+<p class="sub">{{ total }} call{{ "" if total == 1 else "s" }} recorded.</p>
+
+<form class="filters" method="get" action="/audit">
+  <input type="text" name="tool" value="{{ tool }}" placeholder="Filter by tool">
+  <select name="action">
+    <option value="">Any decision</option>
+    {% for value in actions %}
+      <option value="{{ value }}" {% if value == action %}selected{% endif %}>{{ value }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Filter</button>
+  <a class="btn" href="/audit/export.jsonl" style="align-self:center">Export JSONL</a>
+</form>
+
+{% if events %}
+<table>
+  <thead>
+    <tr>
+      <th>Time</th><th>Tool</th><th>Arguments</th><th>Decision</th>
+      <th>Outcome</th><th>Approver</th><th>Latency</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for event in events %}
+    <tr>
+      <td class="meta">{{ event.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td class="tool">{{ event.tool }}</td>
+      <td class="meta">{{ event.arguments | pretty_json | truncate(90) }}</td>
+      <td>
+        <span class="pill {{ event.action.value }}">{{ event.action.value }}</span>
+        {% if event.decision_reason %}<div class="meta">{{ event.decision_reason }}</div>{% endif %}
+      </td>
+      <td><span class="pill {{ event.outcome.value }}">{{ event.outcome.value }}</span></td>
+      <td class="meta">{{ event.approver or "&mdash;" | safe }}</td>
+      <td class="meta">{{ "%.0f"|format(event.latency_ms) if event.latency_ms else "" }}ms</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="filters" style="margin-top:14px">
+  {% if offset > 0 %}
+    <a class="btn" href="/audit?tool={{ tool }}&action={{ action }}&limit={{ limit }}&offset={{ [offset - limit, 0] | max }}">&larr; Newer</a>
+  {% endif %}
+  {% if events | length == limit %}
+    <a class="btn" href="/audit?tool={{ tool }}&action={{ action }}&limit={{ limit }}&offset={{ offset + limit }}">Older &rarr;</a>
+  {% endif %}
+</div>
+{% else %}
+<p class="empty">No matching calls.</p>
+{% endif %}
+{% endblock %}

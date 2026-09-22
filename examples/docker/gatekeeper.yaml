@@ -1,0 +1,59 @@
+# Config used by docker-compose. Differs from examples/filesystem only in the
+# paths and in binding the UI to all interfaces so it is reachable from the
+# host -- acceptable because the container publishes it on loopback.
+version: 1
+
+server:
+  name: mcp-gatekeeper
+  instructions: >
+    Filesystem tools behind a policy gate. Reads run freely; writes need a
+    human approval at the approval UI.
+
+upstreams:
+  - name: fs
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/app/sandbox"]
+
+policy:
+  default: require_approval
+  rules:
+    - tool: "fs__read_*"
+      action: allow
+      reason: "Reading is non-destructive"
+    - tool: "fs__list_*"
+      action: allow
+    - tool: "fs__search_*"
+      action: allow
+    - tool: "fs__directory_tree"
+      action: allow
+    - tool: "fs__get_file_info"
+      action: allow
+
+    - tool: "*"
+      when:
+        args:
+          path: "/prod/**"
+      action: deny
+      reason: "Production paths are off limits to agents"
+
+    - tool: "*"
+      when:
+        destructive_hint: true
+      action: require_approval
+      reason: "Tool reports itself as destructive"
+
+approvals:
+  mode: auto
+  timeout_seconds: 300
+  on_timeout: deny
+  ui:
+    host: 0.0.0.0
+    port: 8765
+    base_url: "http://localhost:8765"
+
+audit:
+  database: /app/data/gatekeeper.db
+  redact:
+    - "**.token"
+    - "**.password"
+    - "**.api_key"

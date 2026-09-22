@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block page_title %}Approval &middot; {{ title }}{% endblock %}
+{% block content %}
+
+{% if not approval %}
+  <h1>Not found</h1>
+  <p class="sub">
+    No approval request with id <code>{{ approval_id }}</code>. It may have been
+    cleared, or the link may be mistyped.
+  </p>
+  <p><a class="btn" href="/">&larr; Back to approvals</a></p>
+
+{% else %}
+  <h1><span class="tool">{{ approval.tool }}</span></h1>
+  <p class="sub">
+    <span class="pill {{ approval.status.value }}">{{ approval.status.value }}</span>
+    &middot; from {{ approval.upstream }}
+    {% if approval.client_name %} &middot; requested by {{ approval.client_name }}{% endif %}
+  </p>
+
+  <div class="card">
+    <div class="meta">Arguments</div>
+    <pre>{{ approval.arguments | pretty_json }}</pre>
+  </div>
+
+  {% if approval.reason %}
+    <div class="card">
+      <div class="meta">Why this needs approval</div>
+      <p style="margin:6px 0 0">{{ approval.reason }}</p>
+    </div>
+  {% endif %}
+
+  {% if approval.status.value == "pending" %}
+    <div class="card">
+      <div class="meta">
+        Expires in {{ approval.seconds_remaining(now) | round | int }}s &mdash;
+        no answer counts as a denial.
+      </div>
+      <form class="decide" method="post" action="/approvals/{{ approval.id }}/decide">
+        <input type="text" name="approver" placeholder="Your name" autocomplete="name">
+        <input type="text" name="note" placeholder="Note (optional)" style="flex:1;min-width:180px">
+        <button class="approve" type="submit" name="decision" value="approve">Approve</button>
+        <button class="deny" type="submit" name="decision" value="deny">Deny</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="meta">Decided</div>
+      <p style="margin:6px 0 0">
+        {{ approval.status.value }}
+        {% if approval.approver %} by <strong>{{ approval.approver }}</strong>{% endif %}
+        {% if approval.decided_at %} at {{ approval.decided_at.strftime("%Y-%m-%d %H:%M:%S UTC") }}{% endif %}
+      </p>
+      {% if approval.note %}<p class="meta" style="margin:6px 0 0">Note: {{ approval.note }}</p>{% endif %}
+    </div>
+    <p class="sub">You can close this tab; the waiting call has been told.</p>
+  {% endif %}
+
+  <p><a class="btn" href="/">&larr; Back to approvals</a></p>
+{% endif %}
+
+{% endblock %}
