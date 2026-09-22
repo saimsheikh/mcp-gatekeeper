@@ -1,4 +1,8 @@
-{# Polled by HTMX so a newly parked call appears without a manual refresh. #}
+{# Polled by HTMX so a newly parked call appears without a manual refresh.
+   Decisions are made inline here: this is the page an approver sits on, and
+   clicking through to a detail page for every call is friction for nothing.
+   The name field lives outside this fragment so a 3s refresh cannot wipe what
+   is being typed. #}
 {% if pending %}
   {% for approval in pending %}
     <div class="card">
@@ -11,7 +15,13 @@
         {% if approval.reason %} &middot; {{ approval.reason }}{% endif %}
       </div>
       <pre>{{ approval.arguments | pretty_json }}</pre>
-      <p style="margin:12px 0 0"><a class="btn" href="/approvals/{{ approval.id }}">Review &rarr;</a></p>
+      <form class="decide" method="post" action="/approvals/{{ approval.id }}/decide">
+        <input type="hidden" name="approver" class="approver-field">
+        <input type="hidden" name="redirect_to" value="/">
+        <button class="approve" type="submit" name="decision" value="approve">Approve</button>
+        <button class="deny" type="submit" name="decision" value="deny">Deny</button>
+        <a class="btn" href="/approvals/{{ approval.id }}" style="align-self:center">Details &rarr;</a>
+      </form>
     </div>
   {% endfor %}
 {% else %}

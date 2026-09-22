@@ -90,6 +90,7 @@ def build_ui(
         decision: Annotated[str, Form()],
         approver: Annotated[str, Form()] = ANONYMOUS,
         note: Annotated[str, Form()] = "",
+        redirect_to: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         await approvals.decide(
             approval_id,
@@ -97,8 +98,12 @@ def build_ui(
             approver=approver.strip() or ANONYMOUS,
             note=note.strip() or None,
         )
+        # Deciding from the queue returns to the queue; deciding from a detail
+        # page stays there. Only known-safe local targets, so a crafted form
+        # cannot turn this into an open redirect.
+        target = "/" if redirect_to == "/" else f"/approvals/{approval_id}"
         # PRG, so a refresh does not resubmit the decision.
-        return RedirectResponse(f"/approvals/{approval_id}", status_code=303)
+        return RedirectResponse(target, status_code=303)
 
     @app.get("/audit", response_class=HTMLResponse)
     async def audit_log(

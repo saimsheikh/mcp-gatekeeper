@@ -3,6 +3,14 @@
 <h1>Pending approvals</h1>
 <p class="sub">Tool calls held by policy until a human decides.</p>
 
+{# Outside the polled fragment, so a refresh mid-typing cannot wipe it. #}
+<div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <label for="approver-name" class="meta">Approving as</label>
+  <input type="text" id="approver-name" placeholder="your name" autocomplete="name"
+         style="flex:1;min-width:160px">
+  <span class="meta">Recorded against every decision you make below.</span>
+</div>
+
 <div hx-get="/approvals/pending" hx-trigger="every 3s" hx-swap="innerHTML">
   {% include "_pending.html" %}
 </div>
@@ -10,7 +18,7 @@
 <h2>Recent activity</h2>
 {% if events %}
 <table>
-  <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>Outcome</th></tr></thead>
+  <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>Outcome</th><th>Approver</th></tr></thead>
   <tbody>
   {% for event in events %}
     <tr>
@@ -18,6 +26,7 @@
       <td class="tool">{{ event.tool }}</td>
       <td><span class="pill {{ event.action.value }}">{{ event.action.value }}</span></td>
       <td><span class="pill {{ event.outcome.value }}">{{ event.outcome.value }}</span></td>
+      <td class="meta">{{ event.approver or "" }}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -26,4 +35,21 @@
 {% else %}
 <p class="empty">No calls recorded yet.</p>
 {% endif %}
+
+<script>
+  // Carry the approver's name into whichever decision form they submit, and
+  // remember it across visits. Without JS the name simply arrives empty and is
+  // recorded as "anonymous"; the detail page has a real field for that case.
+  (function () {
+    var field = document.getElementById("approver-name");
+    try { field.value = localStorage.getItem("gatekeeper.approver") || ""; } catch (e) {}
+    field.addEventListener("input", function () {
+      try { localStorage.setItem("gatekeeper.approver", field.value); } catch (e) {}
+    });
+    document.addEventListener("submit", function (event) {
+      var hidden = event.target.querySelector(".approver-field");
+      if (hidden) { hidden.value = field.value; }
+    }, true);
+  })();
+</script>
 {% endblock %}

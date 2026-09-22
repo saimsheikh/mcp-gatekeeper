@@ -71,6 +71,83 @@ class TestDashboard:
         assert "<html" not in response.text
 
 
+class TestDecidingFromTheQueue:
+    """The dashboard is where an approver lives; it must be actionable there."""
+
+    async def test_queue_offers_approve_and_deny_buttons(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        await open_approval(service)
+        page = client.get("/").text
+        assert 'value="approve"' in page
+        assert 'value="deny"' in page
+
+    async def test_polled_fragment_also_carries_the_buttons(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        # The fragment replaces the list every few seconds; if the buttons only
+        # existed in the initial render they would vanish on first refresh.
+        await open_approval(service)
+        fragment = client.get("/approvals/pending").text
+        assert 'value="approve"' in fragment
+        assert 'value="deny"' in fragment
+
+    async def test_approving_from_the_queue_returns_to_the_queue(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        approval_id = await open_approval(service)
+        response = client.post(
+            f"/approvals/{approval_id}/decide",
+            data={"decision": "approve", "approver": "alice", "redirect_to": "/"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert response.headers["location"] == "/"
+
+        settled = await service.get(approval_id)
+        assert settled is not None
+        assert settled.status.is_granted
+        assert settled.approver == "alice"
+
+    async def test_deciding_without_redirect_stays_on_the_detail_page(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        approval_id = await open_approval(service)
+        response = client.post(
+            f"/approvals/{approval_id}/decide",
+            data={"decision": "deny", "approver": "bob"},
+            follow_redirects=False,
+        )
+        assert response.headers["location"] == f"/approvals/{approval_id}"
+
+    async def test_redirect_target_cannot_be_hijacked(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        # Only the queue and the request's own page are reachable targets.
+        approval_id = await open_approval(service)
+        response = client.post(
+            f"/approvals/{approval_id}/decide",
+            data={
+                "decision": "approve",
+                "approver": "alice",
+                "redirect_to": "https://evil.example.com",
+            },
+            follow_redirects=False,
+        )
+        assert response.headers["location"] == f"/approvals/{approval_id}"
+
+    async def test_decided_request_leaves_the_queue(
+        self, client: TestClient, service: ApprovalService
+    ) -> None:
+        approval_id = await open_approval(service)
+        client.post(
+            f"/approvals/{approval_id}/decide",
+            data={"decision": "approve", "approver": "alice", "redirect_to": "/"},
+            follow_redirects=False,
+        )
+        assert "Nothing waiting" in client.get("/approvals/pending").text
+
+
 class TestApprovalPage:
     async def test_shows_the_call_being_decided(
         self, client: TestClient, service: ApprovalService
