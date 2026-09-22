@@ -68,7 +68,37 @@ uv run mcp-gatekeeper validate --config examples/filesystem/gatekeeper.yaml
 uv run mcp-gatekeeper run --config examples/filesystem/gatekeeper.yaml
 ```
 
-The approval UI is at **http://localhost:8765**. Point a client at the gatekeeper (below), ask it to write a file, and watch the request appear for approval.
+The approval UI is at **http://localhost:8765**.
+
+To see the whole thing work, start it over HTTP and drive it with the bundled demo client:
+
+```bash
+# terminal 1
+cd examples/filesystem
+mcp-gatekeeper run --config gatekeeper.yaml --transport http --port 8810
+
+# terminal 2
+python examples/try_it.py          # parks the write and waits for YOU to approve
+python examples/try_it.py --auto   # approves itself, for a quick smoke test
+```
+
+The default mode is the one worth watching: the read goes straight through, the
+write stops, and nothing moves until you click **Approve** in the UI.
+
+```
+1. Reading a file  (policy: allow -> straight through)
+   'hello from the sandbox'   error=False
+
+2. Writing a file  (policy: require_approval -> stops for a human)
+   >>> OPEN THIS AND CLICK APPROVE: http://localhost:8765/approvals/4aOdKlZO...
+   still waiting...............
+   decision recorded: approved
+   Successfully wrote to approved.txt
+
+Audit trail
+   fs__read_text_file   allow              forwarded   approver=None
+   fs__write_file       require_approval   forwarded   approver=saim
+```
 
 `validate` prints the policy as the engine will actually apply it:
 
