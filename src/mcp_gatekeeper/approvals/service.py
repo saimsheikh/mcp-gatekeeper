@@ -22,7 +22,12 @@ from typing import Any
 
 import anyio
 
-from mcp_gatekeeper.approvals.models import TIMEOUT_APPROVER, ApprovalRequest, ApprovalStatus
+from mcp_gatekeeper.approvals.models import (
+    CLIENT_APPROVER,
+    TIMEOUT_APPROVER,
+    ApprovalRequest,
+    ApprovalStatus,
+)
 from mcp_gatekeeper.approvals.store import SqliteApprovalStore
 
 __all__ = ["POLL_INTERVAL_SECONDS", "ApprovalService"]
@@ -85,6 +90,21 @@ class ApprovalService:
             approval_id, approved=approved, approver=approver, note=note
         )
         event = self._events.get(approval_id)
+        if event is not None:
+            event.set()
+        return resolved
+
+    async def dismiss(self, approval_id: str, *, note: str | None = None) -> ApprovalRequest | None:
+        """Close a request the requesting client abandoned.
+
+        Called when a retry arrives with no human decision on file. Settling it
+        matters: otherwise the row sits pending until its deadline, showing an
+        approver a decision nobody is waiting on any more.
+        """
+        resolved = await self.store.resolve(
+            approval_id, approved=False, approver=CLIENT_APPROVER, note=note
+        )
+        event = self._events.pop(approval_id, None)
         if event is not None:
             event.set()
         return resolved

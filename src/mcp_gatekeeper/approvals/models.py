@@ -14,6 +14,10 @@ TIMEOUT_APPROVER = "system:timeout"
 """Recorded as the approver when a request expires, so the audit trail never
 shows a decision without an actor."""
 
+CLIENT_APPROVER = "system:client-dismissed"
+"""Recorded when the requesting client came back without a human decision --
+the prompt was dismissed, or it retried claiming one that was never made."""
+
 
 class ApprovalStatus(StrEnum):
     PENDING = "pending"

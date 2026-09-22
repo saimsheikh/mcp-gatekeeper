@@ -316,6 +316,29 @@ class Gateway:
                 "This approval request is no longer on file; the call was not forwarded.",
                 is_error=True,
             )
+
+        if not settled.status.is_resolved:
+            # The retry beat any human decision. Either the person dismissed
+            # the prompt, or the client is asserting an approval that was never
+            # granted. Neither is consent, and neither is an approver's denial,
+            # so it is settled and filed under its own outcome.
+            dismissed = await self.deps.approvals.dismiss(
+                request_state, note="client retried with no decision on file"
+            )
+            return await self._apply_approval(
+                entry,
+                request,
+                decision,
+                dismissed or settled,
+                client_name,
+                started,
+                outcome=Outcome.DISMISSED_BY_CLIENT,
+                message=(
+                    "No approver decided this request; the call was not forwarded. "
+                    "Approve it in the gatekeeper UI and try again."
+                ),
+            )
+
         return await self._apply_approval(entry, request, decision, settled, client_name, started)
 
     async def _apply_approval(
@@ -326,6 +349,9 @@ class Gateway:
         approval: ApprovalRequest | None,
         client_name: str | None,
         started: float,
+        *,
+        outcome: Outcome | None = None,
+        message: str | None = None,
     ) -> types.CallToolResult:
         if approval is None:
             return _text_result("Approval request vanished before it was decided.", is_error=True)
@@ -333,11 +359,12 @@ class Gateway:
         if approval.status.is_granted:
             return await self._forward(entry, request, decision, approval, client_name, started)
 
-        outcome = (
-            Outcome.TIMED_OUT
-            if approval.status is ApprovalStatus.EXPIRED
-            else Outcome.DENIED_BY_APPROVER
-        )
+        if outcome is None:
+            outcome = (
+                Outcome.TIMED_OUT
+                if approval.status is ApprovalStatus.EXPIRED
+                else Outcome.DENIED_BY_APPROVER
+            )
         await self._record(
             tool=request.tool,
             upstream=entry.upstream,
@@ -350,12 +377,13 @@ class Gateway:
             approval=approval,
         )
 
-        if approval.status is ApprovalStatus.EXPIRED:
-            message = "No approver responded in time, so the call was denied."
-        else:
-            who = approval.approver or "an approver"
-            note = f" Note: {approval.note}" if approval.note else ""
-            message = f"Denied by {who}.{note}"
+        if message is None:
+            if approval.status is ApprovalStatus.EXPIRED:
+                message = "No approver responded in time, so the call was denied."
+            else:
+                who = approval.approver or "an approver"
+                note = f" Note: {approval.note}" if approval.note else ""
+                message = f"Denied by {who}.{note}"
         return _text_result(f"Blocked by mcp-gatekeeper: {message}", is_error=True)
 
     # -- helpers ----------------------------------------------------------

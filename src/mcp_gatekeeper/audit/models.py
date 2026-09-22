@@ -23,6 +23,9 @@ class Outcome(StrEnum):
     FORWARDED = "forwarded"
     DENIED_BY_POLICY = "denied_by_policy"
     DENIED_BY_APPROVER = "denied_by_approver"
+    DISMISSED_BY_CLIENT = "dismissed_by_client"
+    """The requester dismissed the prompt, or retried without a decision. No
+    approver ever ruled on it, so it must not be filed as a human denial."""
     TIMED_OUT = "timed_out"
     AWAITING_APPROVAL = "awaiting_approval"
     ERROR = "error"

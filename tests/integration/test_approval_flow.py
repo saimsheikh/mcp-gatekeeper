@@ -11,7 +11,11 @@ import anyio
 import pytest
 from mcp import types
 
-from mcp_gatekeeper.approvals.models import TIMEOUT_APPROVER, ApprovalStatus
+from mcp_gatekeeper.approvals.models import (
+    CLIENT_APPROVER,
+    TIMEOUT_APPROVER,
+    ApprovalStatus,
+)
 from mcp_gatekeeper.approvals.store import SqliteApprovalStore
 from mcp_gatekeeper.audit.models import Outcome
 from mcp_gatekeeper.audit.store import SqliteAuditStore
@@ -196,6 +200,81 @@ class TestElicitedApproval:
             )
             assert isinstance(second, types.CallToolResult)
             assert second.is_error
+            assert "No approver decided" in text_of(second)
+
+    async def test_dismissal_is_not_filed_as_a_human_denial(
+        self,
+        gateways: GatewayFactory,
+        approval_store: SqliteApprovalStore,
+        audit_store: SqliteAuditStore,
+    ) -> None:
+        # Nobody ruled on this call, so the trail must not claim an approver
+        # denied it -- that would put words in a person's mouth.
+        async with gateways.build(approval_mode="elicit") as gateway:
+            first = await gateway.call_tool(*CALL, supports_url_elicitation=True)
+            assert isinstance(first, types.InputRequiredResult)
+            approval_id = first.request_state
+            assert approval_id is not None
+
+            await gateway.call_tool(
+                *CALL,
+                supports_url_elicitation=True,
+                request_state=approval_id,
+                input_responses={APPROVAL_INPUT_KEY: types.ElicitResult(action="decline")},
+            )
+
+            events = await audit_store.recent()
+            assert events[0].outcome is Outcome.DISMISSED_BY_CLIENT
+            assert events[0].approver == CLIENT_APPROVER
+
+    async def test_dismissal_settles_the_queue_entry(
+        self, gateways: GatewayFactory, approval_store: SqliteApprovalStore
+    ) -> None:
+        # Otherwise the row lingers until its deadline, showing an approver a
+        # decision nobody is waiting on any more.
+        async with gateways.build(approval_mode="elicit") as gateway:
+            first = await gateway.call_tool(*CALL, supports_url_elicitation=True)
+            assert isinstance(first, types.InputRequiredResult)
+            approval_id = first.request_state
+            assert approval_id is not None
+
+            assert len(await approval_store.pending()) == 1
+
+            await gateway.call_tool(
+                *CALL,
+                supports_url_elicitation=True,
+                request_state=approval_id,
+                input_responses={APPROVAL_INPUT_KEY: types.ElicitResult(action="decline")},
+            )
+
+            assert await approval_store.pending() == []
+            settled = await approval_store.get(approval_id)
+            assert settled is not None
+            assert settled.status is ApprovalStatus.DENIED
+
+    async def test_a_real_denial_still_names_the_approver(
+        self,
+        gateways: GatewayFactory,
+        approval_store: SqliteApprovalStore,
+        audit_store: SqliteAuditStore,
+    ) -> None:
+        async with gateways.build(approval_mode="elicit") as gateway:
+            first = await gateway.call_tool(*CALL, supports_url_elicitation=True)
+            assert isinstance(first, types.InputRequiredResult)
+            approval_id = first.request_state
+            assert approval_id is not None
+
+            await gateway.deps.approvals.decide(approval_id, approved=False, approver="bob")
+            await gateway.call_tool(
+                *CALL,
+                supports_url_elicitation=True,
+                request_state=approval_id,
+                input_responses={APPROVAL_INPUT_KEY: types.ElicitResult(action="decline")},
+            )
+
+            events = await audit_store.recent()
+            assert events[0].outcome is Outcome.DENIED_BY_APPROVER
+            assert events[0].approver == "bob"
 
     async def test_unknown_request_state_is_refused(self, gateways: GatewayFactory) -> None:
         async with gateways.build(approval_mode="elicit") as gateway:
