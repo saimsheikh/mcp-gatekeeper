@@ -1,0 +1,23 @@
+# One-command demo:
+#
+#   docker compose up
+#
+# MCP endpoint  -> http://localhost:8000/mcp
+# Approval UI   -> http://localhost:8765
+services:
+  gatekeeper:
+    build: .
+    ports:
+      - "8000:8000"   # MCP endpoint for clients
+      - "8765:8765"   # approval + audit UI
+    volumes:
+      - ./examples/docker:/app/config:ro
+      - ./examples/filesystem/sandbox:/app/sandbox
+      - gatekeeper-data:/app/data
+    environment:
+      # npx writes here while fetching the upstream server.
+      HOME: /tmp
+    restart: unless-stopped
+
+volumes:
+  gatekeeper-data:
