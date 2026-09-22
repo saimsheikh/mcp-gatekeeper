@@ -1,0 +1,82 @@
+# Wraps the official filesystem MCP server and requires a human for writes.
+#
+# Try it:
+#   mcp-gatekeeper validate --config examples/filesystem/gatekeeper.yaml
+#   mcp-gatekeeper run      --config examples/filesystem/gatekeeper.yaml
+version: 1
+
+server:
+  name: mcp-gatekeeper
+  instructions: >
+    Filesystem tools behind a policy gate. Reads run freely; writes and
+    deletes need a human approval, which appears at the approval UI.
+
+upstreams:
+  - name: fs
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "./sandbox"
+
+policy:
+  # Anything not matched below stops for a human. Tools added to the upstream
+  # later are therefore governed by default rather than silently allowed.
+  default: require_approval
+
+  rules:
+    # Reads are cheap and reversible.
+    - tool: "fs__read_*"
+      action: allow
+      reason: "Reading is non-destructive"
+
+    - tool: "fs__list_*"
+      action: allow
+    - tool: "fs__search_*"
+      action: allow
+    - tool: "fs__get_file_info"
+      action: allow
+    - tool: "fs__directory_tree"
+      action: allow
+
+    # Never touch anything that looks like production, whatever the tool.
+    - tool: "*"
+      when:
+        args:
+          path: "/prod/**"
+      action: deny
+      reason: "Production paths are off limits to agents"
+
+    # Everything a tool declares as destructive stops for a human, even if it
+    # was added to the upstream after these rules were written.
+    - tool: "*"
+      when:
+        destructive_hint: true
+      action: require_approval
+      reason: "Tool reports itself as destructive"
+
+    - tool: "fs__write_file"
+      action: require_approval
+      reason: "Writes change the working tree"
+    - tool: "fs__edit_file"
+      action: require_approval
+    - tool: "fs__move_file"
+      action: require_approval
+    - tool: "fs__create_directory"
+      action: allow
+
+approvals:
+  mode: auto          # elicit where the client supports it, block otherwise
+  timeout_seconds: 300
+  on_timeout: deny    # silence is not consent
+  ui:
+    host: 127.0.0.1
+    port: 8765
+    base_url: "http://localhost:8765"
+
+audit:
+  database: ./gatekeeper.db
+  redact:
+    - "**.token"
+    - "**.password"
+    - "**.api_key"
