@@ -1,0 +1,19 @@
+{# Polled by HTMX so a newly parked call appears without a manual refresh. #}
+{% if pending %}
+  {% for approval in pending %}
+    <div class="card">
+      <div class="row">
+        <span class="tool">{{ approval.tool }}</span>
+        <span class="meta">{{ approval.seconds_remaining(now) | round | int }}s left</span>
+      </div>
+      <div class="meta">
+        from {{ approval.upstream }}{% if approval.client_name %} &middot; {{ approval.client_name }}{% endif %}
+        {% if approval.reason %} &middot; {{ approval.reason }}{% endif %}
+      </div>
+      <pre>{{ approval.arguments | pretty_json }}</pre>
+      <p style="margin:12px 0 0"><a class="btn" href="/approvals/{{ approval.id }}">Review &rarr;</a></p>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="empty">Nothing waiting. Calls needing approval will appear here.</p>
+{% endif %}

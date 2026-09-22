@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Pending approvals</h1>
+<p class="sub">Tool calls held by policy until a human decides.</p>
+
+<div hx-get="/approvals/pending" hx-trigger="every 3s" hx-swap="innerHTML">
+  {% include "_pending.html" %}
+</div>
+
+<h2>Recent activity</h2>
+{% if events %}
+<table>
+  <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>Outcome</th></tr></thead>
+  <tbody>
+  {% for event in events %}
+    <tr>
+      <td class="meta">{{ event.created_at.strftime("%H:%M:%S") }}</td>
+      <td class="tool">{{ event.tool }}</td>
+      <td><span class="pill {{ event.action.value }}">{{ event.action.value }}</span></td>
+      <td><span class="pill {{ event.outcome.value }}">{{ event.outcome.value }}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p style="margin-top:12px"><a class="btn" href="/audit">Full audit log &rarr;</a></p>
+{% else %}
+<p class="empty">No calls recorded yet.</p>
+{% endif %}
+{% endblock %}

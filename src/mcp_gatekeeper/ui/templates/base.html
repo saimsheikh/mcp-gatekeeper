@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block page_title %}{{ title }}{% endblock %}</title>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"
+        integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+        crossorigin="anonymous"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #16181d; --muted: #5c6370; --line: #e3e6ea;
+    --card: #f7f8fa; --accent: #2f6feb;
+    --ok: #1a7f37; --ok-bg: #e8f5ec;
+    --bad: #c9252d; --bad-bg: #fdeceb;
+    --warn: #9a6700; --warn-bg: #fff6dd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1116; --fg: #e6e8ec; --muted: #9aa1ad; --line: #272b33;
+      --card: #171a21; --accent: #6b9bff;
+      --ok: #4ac26b; --ok-bg: #12261a;
+      --bad: #ff7b72; --bad-bg: #2a1616;
+      --warn: #e3b341; --warn-bg: #2b2213;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    border-bottom: 1px solid var(--line); padding: 14px 16px;
+    display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap;
+  }
+  header strong { font-size: 16px; }
+  header a { color: var(--muted); text-decoration: none; }
+  header a:hover { color: var(--accent); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; text-transform: uppercase;
+       letter-spacing: .06em; color: var(--muted); }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .tool { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 13px; }
+  pre {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; overflow-x: auto; font-size: 13px; margin: 10px 0 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+  }
+  .pill.pending  { background: var(--warn-bg); color: var(--warn); }
+  .pill.approved, .pill.allow, .pill.forwarded { background: var(--ok-bg); color: var(--ok); }
+  .pill.denied, .pill.deny, .pill.expired,
+  .pill.denied_by_policy, .pill.denied_by_approver,
+  .pill.timed_out, .pill.error, .pill.unknown_tool { background: var(--bad-bg); color: var(--bad); }
+  .pill.require_approval, .pill.awaiting_approval { background: var(--warn-bg); color: var(--warn); }
+  form.decide { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  input[type=text] {
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--fg); font: inherit; font-size: 14px;
+  }
+  button {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid transparent;
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.approve { background: var(--ok); color: #fff; }
+  button.deny { background: var(--bad); color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase;
+       font-size: 11px; letter-spacing: .05em; }
+  td.tool { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+           background: var(--bg); color: var(--fg); font: inherit; font-size: 14px; }
+  a.btn { text-decoration: none; color: var(--accent); font-size: 14px; }
+  @media (max-width: 600px) {
+    main { padding: 16px; }
+    table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <strong>{{ title }}</strong>
+  <a href="/">Approvals</a>
+  <a href="/audit">Audit log</a>
+</header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>
