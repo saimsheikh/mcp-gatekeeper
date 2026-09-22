@@ -292,6 +292,18 @@ src/mcp_gatekeeper/
   cli.py       run, validate, export
 ```
 
+## Contributing
+
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the
+conventions that matter, and which defaults are load-bearing. Issues tagged
+`good first issue` are scoped to be self-contained.
+
+## Contributing
+
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the
+conventions that matter, and which defaults are load-bearing. Issues tagged
+`good first issue` are scoped to be self-contained.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
