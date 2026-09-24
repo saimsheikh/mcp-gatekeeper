@@ -6,6 +6,14 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+<p align="center">
+  <img src="docs/demo.gif" alt="A tool call pauses for human approval, is approved in the web UI, and completes" width="900">
+</p>
+
+<p align="center">
+  <em>The agent asks to write a file. The call stops, waits for a human, and completes only once someone approves it — with the whole thing written to an audit trail.</em>
+</p>
+
 ---
 
 ## Why this exists
